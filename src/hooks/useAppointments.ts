@@ -1,0 +1,4 @@
+import { useState,useEffect } from 'react';
+import { Appointment } from '../types/appointment';
+import { getAppointments,saveAppointment,updateAppointmentStatus } from '../services/appointmentService';
+export function useAppointments(){const [appointments,setAppointments]=useState<Appointment[]>([]);const [loading,setLoading]=useState(true);const refreshAppointments=async()=>{try{setLoading(true);setAppointments(await getAppointments())}finally{setLoading(false)}};useEffect(()=>{refreshAppointments();const timer=window.setInterval(refreshAppointments,10000);return()=>window.clearInterval(timer)},[]);const addAppointment=async(a:Appointment)=>{await saveAppointment(a);await refreshAppointments()};const changeStatus=async(id:string,status:'Upcoming'|'Completed'|'Cancelled')=>{await updateAppointmentStatus(id,status);await refreshAppointments()};return {appointments,loading,addAppointment,changeStatus,refreshAppointments};}
