@@ -86,12 +86,4 @@ The AI is intentionally positioned as a navigation and decision-support componen
 
 Safety Consideration
 
-CareFlow AI does not claim that an AI-generated result is a medical diagnosis. Image analysis can be uncertain or incomplete, and users should consult qualified healthcare professionals for diagnosis and treatment.
-
-
-### Important
-
-In your screenshot, you currently have:
-
-```text
-Appointment Booking
+CareFlow AI does not claim that an AI-generated result is a medical diagnosis. Image analysis can be uncertain or incomplete, and users should consult qualified healthcare professionals for diagnosis and treatment
