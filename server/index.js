@@ -4,10 +4,30 @@ import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import multer from 'multer';
 import crypto from 'crypto';
+import { fileURLToPath } from 'url';
 
-dotenv.config({ path: new URL('./.env', import.meta.url) });
+const serverEnvPath = fileURLToPath(
+  new URL('./.env', import.meta.url)
+);
+
+dotenv.config({ path: serverEnvPath });
+
+// Keep server/.env as the source of truth while supporting the existing root key.
+if (!process.env.VISION_API_KEY) {
+  const rootEnv = dotenv.config({
+    path: fileURLToPath(new URL('../.env', import.meta.url))
+  }).parsed;
+
+  if (rootEnv?.VISION_API_KEY) {
+    process.env.VISION_API_KEY = rootEnv.VISION_API_KEY;
+  }
+}
 
 const app = express();
+
+/* =========================================================
+   APP CONFIGURATION
+========================================================= */
 
 app.use(
   cors({
@@ -23,6 +43,13 @@ const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
     fileSize: 8 * 1024 * 1024
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype && file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed.'));
+    }
   }
 });
 
@@ -36,22 +63,36 @@ const DoctorSchema = new mongoose.Schema(
       type: String,
       unique: true
     },
+
     name: String,
+
     gender: String,
+
     specialty: String,
+
     hospital: String,
+
     rating: Number,
+
     reviewsCount: Number,
+
     experience: String,
+
     location: String,
+
     nextSlot: String,
+
     fee: Number,
+
     availableDates: [String],
+
     slots: {
       type: Map,
       of: [String]
     },
+
     about: String,
+
     doctorPhone: String
   },
   {
@@ -65,20 +106,36 @@ const AppointmentSchema = new mongoose.Schema(
       type: String,
       unique: true
     },
+
     patientName: String,
+
     patientPhone: String,
+
     patientEmail: String,
+
     doctorId: String,
+
     doctorName: String,
+
     doctorPhone: String,
+
     specialty: String,
+
     hospital: String,
+
     date: String,
+
     time: String,
+
     status: {
       type: String,
-      enum: ['Upcoming', 'Completed', 'Cancelled']
+      enum: [
+        'Upcoming',
+        'Completed',
+        'Cancelled'
+      ]
     },
+
     fee: Number
   },
   {
@@ -86,7 +143,11 @@ const AppointmentSchema = new mongoose.Schema(
   }
 );
 
-const Doctor = mongoose.model('Doctor', DoctorSchema);
+const Doctor = mongoose.model(
+  'Doctor',
+  DoctorSchema
+);
+
 const Appointment = mongoose.model(
   'Appointment',
   AppointmentSchema
@@ -103,42 +164,49 @@ const hospitalData = [
     'Chennai',
     '21 Greams Lane, Chennai, Tamil Nadu 600006'
   ],
+
   [
     'h2',
     'Kauvery Hospital, Alwarpet',
     'Chennai',
     '81, TTK Road, Alwarpet, Chennai, Tamil Nadu 600018'
   ],
+
   [
     'h3',
     'MGM Healthcare, Aminjikarai',
     'Chennai',
     '72, Nelson Manickam Road, Chennai, Tamil Nadu 600029'
   ],
+
   [
     'h4',
     'SIMS Hospital, Vadapalani',
     'Chennai',
     'No.1, Jawaharlal Nehru Road, Vadapalani, Chennai, Tamil Nadu 600026'
   ],
+
   [
     'h5',
     'Sri Ramachandra Medical Centre',
     'Chennai',
     'Porur, Chennai, Tamil Nadu 600116'
   ],
+
   [
     'h6',
     'Kauvery Hospital, Cantonment',
     'Trichy',
     'Tennur High Road, Trichy, Tamil Nadu 620017'
   ],
+
   [
     'h7',
     'KMC Speciality Hospital',
     'Trichy',
     'Cantonment, Trichy, Tamil Nadu 620001'
   ],
+
   [
     'h8',
     'GVN Hospital',
@@ -206,7 +274,10 @@ function seedDoctors() {
     const specialty =
       specialties[i % specialties.length];
 
-    const city = i < 10 ? 'Chennai' : 'Trichy';
+    const city =
+      i < 10
+        ? 'Chennai'
+        : 'Trichy';
 
     const hospitals =
       city === 'Chennai'
@@ -216,31 +287,62 @@ function seedDoctors() {
     const hospital =
       hospitals[i % hospitals.length][1];
 
-    const gender = i % 2 ? 'Male' : 'Female';
+    const gender =
+      i % 2
+        ? 'Male'
+        : 'Female';
 
     return {
       id: String(i + 1),
+
       name,
+
       gender,
+
       specialty,
+
       hospital,
+
       rating: Number(
-        (4.6 + (i % 4) * 0.1).toFixed(1)
+        (
+          4.6 +
+          (i % 4) * 0.1
+        ).toFixed(1)
       ),
-      reviewsCount: 70 + i * 9,
-      experience: `${7 + (i % 9)} years`,
-      location: city,
-      nextSlot: `Today, ${
-        slots[(i + 2) % slots.length]
-      }`,
-      fee: 550 + (i % 6) * 75,
-      availableDates: dates,
-      slots: Object.fromEntries(
-        dates.map((date) => [date, slots])
-      ),
-      doctorPhone: `+91900000${String(
-        1000 + i
-      ).padStart(4, '0')}`,
+
+      reviewsCount:
+        70 + i * 9,
+
+      experience:
+        `${7 + (i % 9)} years`,
+
+      location:
+        city,
+
+      nextSlot:
+        `Today, ${
+          slots[(i + 2) % slots.length]
+        }`,
+
+      fee:
+        550 + (i % 6) * 75,
+
+      availableDates:
+        dates,
+
+      slots:
+        Object.fromEntries(
+          dates.map((date) => [
+            date,
+            slots
+          ])
+        ),
+
+      doctorPhone:
+        `+91900000${String(
+          1000 + i
+        ).padStart(4, '0')}`,
+
       about:
         `Demo CareFlow profile for ${specialty} care in ${city}. ` +
         `Doctor profile data is seeded for this working prototype; ` +
@@ -253,11 +355,15 @@ function seedDoctors() {
    WHATSAPP NOTIFICATION
 ========================================================= */
 
-async function notifyWhatsApp(to, message) {
+async function notifyWhatsApp(
+  to,
+  message
+) {
   if (!to) {
     return {
       sent: false,
-      reason: 'phone number missing'
+      reason:
+        'phone number missing'
     };
   }
 
@@ -268,40 +374,70 @@ async function notifyWhatsApp(to, message) {
     process.env.WHATSAPP_PHONE_NUMBER_ID;
 
   /*
-   * If WhatsApp API credentials are not configured,
+   * If WhatsApp credentials are not configured,
    * return a fallback WhatsApp link.
    */
-  if (!token || !phoneNumberId) {
+
+  if (
+    !token ||
+    !phoneNumberId
+  ) {
     return {
       sent: false,
-      reason: 'WhatsApp API not configured',
+
+      reason:
+        'WhatsApp API not configured',
+
       fallback:
-        `https://wa.me/${to.replace(/\D/g, '')}` +
-        `?text=${encodeURIComponent(message)}`
+        `https://wa.me/${to.replace(
+          /\D/g,
+          ''
+        )}` +
+        `?text=${encodeURIComponent(
+          message
+        )}`
     };
   }
 
   try {
-    const response = await fetch(
-      `https://graph.facebook.com/v22.0/${phoneNumberId}/messages`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          messaging_product: 'whatsapp',
-          to: to.replace(/\D/g, ''),
-          type: 'text',
-          text: {
-            body: message
-          }
-        })
-      }
-    );
+    const response =
+      await fetch(
+        `https://graph.facebook.com/v22.0/${phoneNumberId}/messages`,
+        {
+          method: 'POST',
 
-    const data = await response.json();
+          headers: {
+            Authorization:
+              `Bearer ${token}`,
+
+            'Content-Type':
+              'application/json'
+          },
+
+          body:
+            JSON.stringify({
+              messaging_product:
+                'whatsapp',
+
+              to:
+                to.replace(
+                  /\D/g,
+                  ''
+                ),
+
+              type:
+                'text',
+
+              text: {
+                body:
+                  message
+              }
+            })
+        }
+      );
+
+    const data =
+      await response.json();
 
     if (response.ok) {
       return {
@@ -312,14 +448,17 @@ async function notifyWhatsApp(to, message) {
 
     return {
       sent: false,
+
       reason:
         data?.error?.message ||
         'WhatsApp send failed'
     };
+
   } catch (error) {
     return {
       sent: false,
-      reason: error.message
+      reason:
+        error.message
     };
   }
 }
@@ -328,76 +467,116 @@ async function notifyWhatsApp(to, message) {
    HEALTH CHECK
 ========================================================= */
 
-app.get('/api/health', (req, res) => {
-  res.json({
-    ok: true,
-    service: 'CareFlow API',
-    mongodb:
-      mongoose.connection.readyState === 1,
-    whatsappConfigured:
-      Boolean(
-        process.env.WHATSAPP_ACCESS_TOKEN
-      )
-  });
-});
+app.get(
+  '/api/health',
+  (req, res) => {
+    res.json({
+      ok: true,
+
+      service:
+        'CareFlow API',
+
+      mongodb:
+        mongoose.connection.readyState === 1,
+
+      visionConfigured:
+        Boolean(
+          process.env.VISION_API_KEY
+        ),
+
+      whatsappConfigured:
+        Boolean(
+          process.env.WHATSAPP_ACCESS_TOKEN &&
+          process.env.WHATSAPP_PHONE_NUMBER_ID
+        )
+    });
+  }
+);
 
 /* =========================================================
    DOCTORS
 ========================================================= */
 
-app.get('/api/doctors', async (req, res) => {
-  try {
-    const query = {};
+app.get(
+  '/api/doctors',
+  async (req, res) => {
+    try {
+      const query = {};
 
-    if (
-      req.query.specialty &&
-      req.query.specialty !== 'All'
-    ) {
-      query.specialty = req.query.specialty;
+      if (
+        req.query.specialty &&
+        req.query.specialty !== 'All'
+      ) {
+        query.specialty =
+          req.query.specialty;
+      }
+
+      if (
+        req.query.gender &&
+        req.query.gender !== 'All'
+      ) {
+        query.gender =
+          req.query.gender;
+      }
+
+      if (
+        req.query.location &&
+        req.query.location !== 'All'
+      ) {
+        query.location =
+          req.query.location;
+      }
+
+      const doctors =
+        await Doctor
+          .find(query)
+          .lean();
+
+      res.json(
+        doctors
+      );
+
+    } catch (error) {
+      console.error(
+        'Doctors error:',
+        error
+      );
+
+      res.status(500).json({
+        error:
+          error.message
+      });
     }
-
-    if (
-      req.query.gender &&
-      req.query.gender !== 'All'
-    ) {
-      query.gender = req.query.gender;
-    }
-
-    if (
-      req.query.location &&
-      req.query.location !== 'All'
-    ) {
-      query.location = req.query.location;
-    }
-
-    const doctors = await Doctor
-      .find(query)
-      .lean();
-
-    res.json(doctors);
-  } catch (error) {
-    res.status(500).json({
-      error: error.message
-    });
   }
-});
+);
 
 /* =========================================================
    HOSPITALS
 ========================================================= */
 
-app.get('/api/hospitals', (req, res) => {
-  const hospitals = hospitalData.map(
-    ([id, name, city, address]) => ({
-      id,
-      name,
-      city,
-      address
-    })
-  );
+app.get(
+  '/api/hospitals',
+  (req, res) => {
+    const hospitals =
+      hospitalData.map(
+        ([
+          id,
+          name,
+          city,
+          address
+        ]) => ({
+          id,
+          name,
+          city,
+          address
+        })
+      );
 
-  res.json(hospitals);
-});
+    res.json(
+      hospitals
+    );
+  }
+);
 
 /* =========================================================
    APPOINTMENTS - GET
@@ -407,25 +586,40 @@ app.get(
   '/api/appointments',
   async (req, res) => {
     try {
-      const email = req.query.email;
+      const email =
+        req.query.email;
 
       if (!email) {
         return res.status(400).json({
-          error: 'email is required'
+          error:
+            'email is required'
         });
       }
 
       const appointments =
-        await Appointment.find({
-          patientEmail: email
-        })
-          .sort({ createdAt: -1 })
+        await Appointment
+          .find({
+            patientEmail:
+              email
+          })
+          .sort({
+            createdAt: -1
+          })
           .lean();
 
-      res.json(appointments);
+      res.json(
+        appointments
+      );
+
     } catch (error) {
+      console.error(
+        'Appointments error:',
+        error
+      );
+
       res.status(500).json({
-        error: error.message
+        error:
+          error.message
       });
     }
   }
@@ -439,7 +633,8 @@ app.post(
   '/api/appointments',
   async (req, res) => {
     try {
-      const booking = req.body;
+      const booking =
+        req.body;
 
       if (
         !booking.doctorId ||
@@ -454,15 +649,22 @@ app.post(
       }
 
       /*
-       * Prevent two patients from booking
-       * the same doctor/time.
+       * Prevent duplicate booking.
        */
+
       const conflict =
         await Appointment.findOne({
-          doctorId: booking.doctorId,
-          date: booking.date,
-          time: booking.time,
-          status: 'Upcoming'
+          doctorId:
+            booking.doctorId,
+
+          date:
+            booking.date,
+
+          time:
+            booking.time,
+
+          status:
+            'Upcoming'
         });
 
       if (conflict) {
@@ -473,34 +675,39 @@ app.post(
       }
 
       /*
-       * Get the doctor from database so
-       * doctor phone is available for cancellation.
+       * Get doctor.
        */
+
       const doctor =
         await Doctor.findOne({
-          id: booking.doctorId
+          id:
+            booking.doctorId
         }).lean();
 
       if (!doctor) {
         return res.status(404).json({
-          error: 'Doctor not found'
+          error:
+            'Doctor not found'
         });
       }
 
-      const id = crypto.randomUUID();
+      const id =
+        crypto.randomUUID();
 
       const appointment =
         await Appointment.create({
           id,
 
           patientName:
-            booking.patientName || '',
+            booking.patientName ||
+            '',
 
           patientPhone:
             booking.patientPhone,
 
           patientEmail:
-            booking.patientEmail || '',
+            booking.patientEmail ||
+            '',
 
           doctorId:
             doctor.id,
@@ -523,15 +730,13 @@ app.post(
           time:
             booking.time,
 
-          status: 'Upcoming',
+          status:
+            'Upcoming',
 
           fee:
-            booking.fee ?? doctor.fee
+            booking.fee ??
+            doctor.fee
         });
-
-      /* ================================
-         PATIENT CONFIRMATION MESSAGE
-      ================================= */
 
       const message =
         `CareFlow AI appointment confirmed.\n\n` +
@@ -550,8 +755,10 @@ app.post(
 
       res.status(201).json({
         appointment,
+
         notification
       });
+
     } catch (error) {
       console.error(
         'Booking error:',
@@ -559,7 +766,8 @@ app.post(
       );
 
       res.status(500).json({
-        error: error.message
+        error:
+          error.message
       });
     }
   }
@@ -576,12 +784,18 @@ app.patch(
       const appointment =
         await Appointment.findOneAndUpdate(
           {
-            id: req.params.id,
-            status: 'Upcoming'
+            id:
+              req.params.id,
+
+            status:
+              'Upcoming'
           },
+
           {
-            status: 'Cancelled'
+            status:
+              'Cancelled'
           },
+
           {
             new: true
           }
@@ -602,18 +816,12 @@ app.patch(
         `Date: ${appointment.date}\n` +
         `Time: ${appointment.time}`;
 
-      /*
-       * Notify patient
-       */
       const patientNotification =
         await notifyWhatsApp(
           appointment.patientPhone,
           message
         );
 
-      /*
-       * Notify doctor
-       */
       const doctorPhone =
         req.body?.doctorPhone ||
         appointment.doctorPhone;
@@ -629,6 +837,7 @@ app.patch(
       } else {
         doctorNotification = {
           sent: false,
+
           reason:
             'doctor phone number not configured'
         };
@@ -636,13 +845,16 @@ app.patch(
 
       res.json({
         appointment,
+
         notifications: {
           patient:
             patientNotification,
+
           doctor:
             doctorNotification
         }
       });
+
     } catch (error) {
       console.error(
         'Cancellation error:',
@@ -650,119 +862,378 @@ app.patch(
       );
 
       res.status(500).json({
-        error: error.message
+        error:
+          error.message
       });
     }
   }
 );
 
 /* =========================================================
-   IMAGE ANALYSIS
+   IMAGE ANALYSIS - OPENAI VISION
 ========================================================= */
 
 app.post(
   '/api/image-analyze',
   upload.single('image'),
+
   async (req, res) => {
     try {
+      /*
+       * STEP 1:
+       * Check image.
+       */
+
       if (!req.file) {
         return res.status(400).json({
-          error: 'image is required'
+          error:
+            'image is required'
         });
       }
 
       /*
-       * We do NOT pretend to have medical
-       * image AI when no provider is configured.
+       * STEP 2:
+       * Check OpenAI key.
        */
-      if (!process.env.VISION_API_KEY) {
-        return res.json({
-          configured: false,
-          message:
-            'Image uploaded successfully, but medical image AI is not configured yet. Add VISION_API_KEY to enable analysis.',
-          suggestedSpecialty:
-            'General Medicine',
-          safety:
-            'Do not use an image result as a diagnosis.'
+
+      const apiKey =
+        process.env.VISION_API_KEY;
+
+      if (!apiKey) {
+        return res.status(500).json({
+          error:
+            'VISION_API_KEY is not configured in server/.env'
         });
       }
 
+      /*
+       * STEP 3:
+       * Convert image to base64.
+       */
+
       const base64 =
-        req.file.buffer.toString('base64');
+        req.file.buffer.toString(
+          'base64'
+        );
+
+      /*
+       * STEP 4:
+       * OpenAI endpoint.
+       */
 
       const visionUrl =
         process.env.VISION_API_URL ||
         'https://api.openai.com/v1/chat/completions';
 
-      const response = await fetch(
-        visionUrl,
-        {
-          method: 'POST',
+      /*
+       * STEP 5:
+       * Model.
+       */
 
-          headers: {
-            Authorization:
-              `Bearer ${process.env.VISION_API_KEY}`,
+      const model =
+        process.env.VISION_MODEL ||
+        'gpt-4o-mini';
 
-            'Content-Type':
-              'application/json'
-          },
+      console.log(
+        'Starting OpenAI image analysis...'
+      );
 
-          body: JSON.stringify({
-            model:
-              process.env.VISION_MODEL ||
-              'gpt-4o-mini',
+      /*
+       * STEP 6:
+       * Send image to OpenAI.
+       */
 
-            messages: [
-              {
-                role: 'system',
+      const response =
+        await fetch(
+          visionUrl,
+          {
+            method:
+              'POST',
 
-                content:
-                  'You are a healthcare navigation assistant. Never diagnose. Identify only a broad visible concern category and suggest a medical specialty. If the image is unclear or not medically interpretable, say so.'
-              },
+            headers: {
+              Authorization:
+                `Bearer ${apiKey}`,
 
-              {
-                role: 'user',
+              'Content-Type':
+                'application/json'
+            },
 
-                content: [
+            body:
+              JSON.stringify({
+                model,
+
+                messages: [
                   {
-                    type: 'text',
+                    role:
+                      'system',
 
-                    text:
-                      'Review this image for broad healthcare navigation only. Do not diagnose. Return JSON with concern, suggestedSpecialty, confidence, and explanation.'
+                    content:
+                      `You are CareFlow AI, a healthcare navigation assistant.
+
+Do NOT diagnose diseases.
+
+Do NOT prescribe medication.
+
+Do NOT provide treatment instructions.
+
+Your job is only to help the user choose an appropriate medical specialty based on visible features in an uploaded image.
+
+You may identify broad visible categories such as:
+- skin concern
+- eye concern
+- dental concern
+- ear/nose/throat concern
+- visible injury
+- swelling
+- redness
+- rash-like appearance
+- wound-like appearance
+- other broad healthcare concern
+
+Available specialties:
+- General Medicine
+- Dermatology
+- Pediatrics
+- Cardiology
+- Orthopedics
+- Dentistry
+- Ophthalmology
+- ENT
+- Neurology
+- Gynecology
+
+If the image is unclear, poor quality, unrelated to healthcare, or cannot reasonably support navigation, recommend General Medicine.
+
+Return ONLY JSON with these fields:
+
+{
+  "concern": "short broad concern",
+  "suggestedSpecialty": "one specialty from the list",
+  "confidence": 0,
+  "explanation": "short explanation"
+}
+
+confidence must be a number from 0 to 100.`
                   },
 
                   {
-                    type: 'image_url',
+                    role:
+                      'user',
 
-                    image_url: {
-                      url:
-                        `data:${req.file.mimetype};base64,${base64}`
-                    }
+                    content: [
+                      {
+                        type:
+                          'text',
+
+                        text:
+                          'Review this image for broad healthcare navigation only. Do not diagnose.'
+                      },
+
+                      {
+                        type:
+                          'image_url',
+
+                        image_url: {
+                          url:
+                            `data:${req.file.mimetype};base64,${base64}`
+                        }
+                      }
+                    ]
                   }
-                ]
-              }
-            ],
+                ],
 
-            max_tokens: 300
-          })
-        }
-      );
+                max_tokens:
+                  300,
+
+                temperature:
+                  0.2
+              })
+          }
+        );
+
+      /*
+       * STEP 7:
+       * Read OpenAI response.
+       */
 
       const data =
         await response.json();
 
+      /*
+       * STEP 8:
+       * Handle OpenAI errors.
+       */
+
       if (!response.ok) {
+        console.error(
+          'OpenAI API error:',
+          data?.error?.message || 'Unknown provider error'
+        );
+
         return res.status(502).json({
           error:
             data?.error?.message ||
-            'Vision API request failed'
+            'OpenAI Vision API request failed'
         });
       }
 
-      res.json({
-        configured: true,
-        raw: data
-      });
+      /*
+       * STEP 9:
+       * Extract actual AI message.
+       */
+
+      let content =
+        data?.choices?.[0]?.message?.content;
+
+      if (!content) {
+        console.error(
+          'OpenAI returned no message content'
+        );
+
+        return res.status(502).json({
+          error:
+            'OpenAI returned an empty analysis'
+        });
+      }
+
+      /*
+       * Some models/responses may wrap
+       * JSON in markdown code fences.
+       */
+
+      if (typeof content !== 'string') {
+        content =
+          JSON.stringify(
+            content
+          );
+      }
+
+      /*
+       * STEP 10:
+       * Clean markdown.
+       */
+
+      const cleaned =
+        content
+          .replace(
+            /^```json\s*/i,
+            ''
+          )
+          .replace(
+            /^```\s*/i,
+            ''
+          )
+          .replace(
+            /\s*```$/i,
+            ''
+          )
+          .trim();
+
+      /*
+       * STEP 11:
+       * Parse JSON.
+       */
+
+      let result;
+
+      try {
+        result =
+          JSON.parse(
+            cleaned
+          );
+      } catch (parseError) {
+        console.error(
+          'Could not parse OpenAI JSON:',
+          parseError.message
+        );
+
+        return res.status(502).json({
+          error:
+            'AI returned an invalid analysis format'
+        });
+      }
+
+      /*
+       * STEP 12:
+       * Validate specialty.
+       */
+
+      const allowedSpecialties = [
+        'General Medicine',
+        'Dermatology',
+        'Pediatrics',
+        'Cardiology',
+        'Orthopedics',
+        'Dentistry',
+        'Ophthalmology',
+        'ENT',
+        'Neurology',
+        'Gynecology'
+      ];
+
+      if (
+        !allowedSpecialties.includes(
+          result.suggestedSpecialty
+        )
+      ) {
+        result.suggestedSpecialty =
+          'General Medicine';
+      }
+
+      /*
+       * STEP 13:
+       * Validate confidence.
+       */
+
+      let confidence =
+        Number(
+          result.confidence
+        );
+
+      if (
+        Number.isNaN(
+          confidence
+        )
+      ) {
+        confidence = 0;
+      }
+
+      confidence =
+        Math.max(
+          0,
+          Math.min(
+            100,
+            confidence
+          )
+        );
+
+      /*
+       * STEP 14:
+       * Return exactly what frontend expects.
+       */
+
+      const finalResult = {
+        concern:
+          result.concern ||
+          'General healthcare concern',
+
+        suggestedSpecialty:
+          result.suggestedSpecialty,
+
+        confidence,
+
+        explanation:
+          result.explanation ||
+          'The image was reviewed for healthcare navigation.',
+
+        safety:
+          'This result is for healthcare navigation only and is not a medical diagnosis.'
+      };
+
+      res.json(
+        finalResult
+      );
+
     } catch (error) {
       console.error(
         'Image analysis error:',
@@ -770,9 +1241,39 @@ app.post(
       );
 
       res.status(500).json({
-        error: error.message
+        error:
+          error.message ||
+          'Image analysis failed'
       });
     }
+  }
+);
+
+/* =========================================================
+   ERROR HANDLER
+========================================================= */
+
+app.use(
+  (error, req, res, next) => {
+    console.error(
+      'Server error:',
+      error
+    );
+
+    if (
+      error instanceof multer.MulterError
+    ) {
+      return res.status(400).json({
+        error:
+          `Upload error: ${error.message}`
+      });
+    }
+
+    res.status(500).json({
+      error:
+        error.message ||
+        'Internal server error'
+    });
   }
 );
 
@@ -781,7 +1282,8 @@ app.post(
 ========================================================= */
 
 const PORT =
-  process.env.PORT || 4000;
+  process.env.PORT ||
+  4000;
 
 const MONGODB_URI =
   process.env.MONGODB_URI ||
@@ -802,9 +1304,10 @@ async function startServer() {
     );
 
     /*
-     * Seed demo doctors automatically
-     * when database is empty.
+     * Seed demo doctors if database
+     * is empty.
      */
+
     const doctorCount =
       await Doctor.countDocuments();
 
@@ -822,14 +1325,48 @@ async function startServer() {
       );
     }
 
+    /*
+     * Check AI configuration.
+     */
+
+    console.log(
+      `OpenAI Vision: ${
+        process.env.VISION_API_KEY
+          ? 'CONFIGURED'
+          : 'NOT CONFIGURED'
+      }`
+    );
+
+    console.log(
+      `WhatsApp: ${
+        process.env.WHATSAPP_ACCESS_TOKEN &&
+        process.env.WHATSAPP_PHONE_NUMBER_ID
+          ? 'CONFIGURED'
+          : 'NOT CONFIGURED'
+      }`
+    );
+
+    /*
+     * Start server.
+     */
+
     app.listen(
       PORT,
       () => {
+        console.log('');
+        console.log(
+          '=========================================='
+        );
         console.log(
           `CareFlow API running on http://localhost:${PORT}`
         );
+        console.log(
+          '=========================================='
+        );
+        console.log('');
       }
     );
+
   } catch (error) {
     console.error(
       'Server startup failed:',
